@@ -1,0 +1,198 @@
+﻿<#@ template debug="true" hostspecific="true" language="C#" #>
+<#@ assembly name="System" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="System.Linq" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Linq" #>
+<#@ output extension=".cs" #>
+<#
+// HOW TO USE
+// Define your VMs in ViewModel.txt
+// Derive from the auto-generated base classes to create your own VMs
+#>
+
+<#
+    ViewModelGeneratorSettings.ParseDefinitions(this.Host.ResolvePath("ViewModel.txt"));
+#>
+
+<# foreach (var s in ViewModelGeneratorSettings.OutputUsings)
+    { #>
+<#=s#>
+<#    } #>
+
+
+namespace <#=ViewModelGeneratorSettings.OutputNameSpace #>
+{
+
+<# foreach (var vm in ViewModelGeneratorSettings.ViewModelDefinitions)
+{ #>
+
+   /// <summary>
+   /// 
+   /// </summary>
+    public class <#=  vm.Name #>  :  INotifyPropertyChanged
+    { 
+ 
+        public event PropertyChangedEventHandler PropertyChanged;
+ 
+        public virtual void SendPropertyChanged(String propertyName)
+        {
+          if ((this.PropertyChanged != null))
+          {
+            this.PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+          }        
+        }
+
+<#      foreach  (var p in vm.Properties)
+		{
+		var typ = p.Item2;
+		var name = p.Item1;
+		var priv=name.ToLower();#>
+
+        public const string <#= name#>_Name = "<#= name#>";
+        protected <#= typ#> _<#= priv#>;
+        public <#= typ#> <#= name#>
+        {
+            get {  return this._<#= priv#>; }
+            set
+            {
+                if (_<#= priv#> == value)
+                       return;
+                this._<#= priv#> = value;
+                 this.SendPropertyChanged(<#= name#>_Name);
+            }
+        }
+       
+     <# } #>
+} 
+<# } #>
+
+
+}
+
+
+
+<#+
+
+    public  static class ViewModelGeneratorSettings
+    {   
+        const string DefFilePath = "ViewModelDefinitions.txt";	        
+
+		public static void ParseDefinitions(string fullDefFilePath)
+		{
+            OutputNameSpace = null;
+            OutputUsings = new List<string>();
+            ViewModelDefinitions = new List<ViewModelDefinition>();
+
+           var allFileLines = System.IO.File.ReadAllLines(fullDefFilePath);
+
+            var lines = allFileLines.Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
+			 
+
+            // Set output ns
+            var outputNsIndex = Array.FindIndex(lines, row => row.ToLowerInvariant().StartsWith(":outputnamespace"))+1;
+            OutputNameSpace = lines[outputNsIndex];
+
+
+            // set output usings
+           var outputUsingsIndex = Array.FindIndex(lines, row => row.ToLowerInvariant().StartsWith(":usings"))+1;            
+
+            int i = outputUsingsIndex;
+            var currentLine= lines[i];
+            while (! currentLine.StartsWith(":"))
+            {                
+                OutputUsings.Add(currentLine);
+                i++;
+                currentLine = lines[i];
+            }
+
+
+
+            // parse vm defs
+            var vmDefStartLines = lines.Select((l, row) => new { line = l, index = row })
+                .Where(l => l.line.StartsWith("#"))
+                .Select(x => x.index);
+
+
+
+            foreach (int vmDefStartIndex in vmDefStartLines)
+            {
+                var temp = new ViewModelDefinition();
+
+                temp.Name = lines[vmDefStartIndex].Replace("#","");
+
+                i=vmDefStartIndex+1;
+                currentLine= lines[i];
+
+                while (currentLine != null && !currentLine.StartsWith("#"))
+                {           
+     
+
+                    if (currentLine.StartsWith("p"))
+                    {
+                        var propName=currentLine.Split(' ')[1];
+                        var propType=currentLine.Split(' ')[2];
+
+                        temp.Properties.Add(Tuple.Create(propName, propType));
+                    } 
+                    if (currentLine.StartsWith("c"))
+                    {
+                        var cmdName=currentLine.Split(' ')[1];  
+                        temp.Commands.Add(cmdName);
+                    } 
+                    i++;
+                    if (i < lines.Length)
+                    {
+                        currentLine = lines[i];
+                    }
+                    else
+                    {   
+                        currentLine = null;
+                    }
+                }
+
+                ViewModelDefinitions.Add(temp);
+            }
+
+
+
+
+
+		}
+
+
+        public static string OutputNameSpace
+		{
+			get;
+			set;			
+		}
+
+
+        public static List<string> OutputUsings
+		{
+			get;
+			set;			
+		}
+
+        public static List<ViewModelDefinition> ViewModelDefinitions
+        {
+            get;
+            set;
+        }
+
+
+        public sealed class ViewModelDefinition
+        {
+            public ViewModelDefinition()
+            {
+                Name = "Unknown";
+                Properties = new List<Tuple<string, string>>();
+                Commands = new List<string>();
+            }
+            public string Name { get; set; }
+            public List<Tuple<string, string>> Properties { get; set; }
+            public List<string>  Commands { get; set; }
+
+        }
+    }
+ #>

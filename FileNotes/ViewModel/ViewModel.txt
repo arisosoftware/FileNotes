@@ -1,0 +1,26 @@
+﻿:Usings
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+
+
+:OutputNamespace
+FileNotes.ViewModel
+
+#FolderItem
+p Title string
+p SubItems ObservableCollection<FolderItem>
+
+#FileItem
+p FileName string
+p FileSize int
+p FileTime DateTime
+
+#MainViewModel
+p FolderItem FolderItem
+p FileItem ObservableCollection<FileItem>
+ 
