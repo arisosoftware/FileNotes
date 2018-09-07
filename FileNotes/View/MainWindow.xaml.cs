@@ -12,6 +12,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using FileNotes.ViewModel;
+using System.Collections.ObjectModel;
 
 namespace FileNotes.View
 {
@@ -25,8 +26,11 @@ namespace FileNotes.View
             InitializeComponent();
             FolderItem root = new FolderItem() { Title = "Menu" };
 			FolderItem childItem1 = new FolderItem() { Title = "Child item #1" };
-			childItem1.SubItems.Add(new FolderItem() { Title = "Child item #1.1" });
+			childItem1.SubItems= new ObservableCollection<FolderItem>();
+                
+              childItem1.SubItems  .Add(new FolderItem() { Title = "Child item #1.1" });
 			childItem1.SubItems.Add(new FolderItem() { Title = "Child item #1.2" });
+            root.SubItems = new ObservableCollection<FolderItem>();
 			root.SubItems.Add(childItem1);
 			root.SubItems.Add(new FolderItem() { Title = "Child item #2" });
 			trvMenu.Items.Add(root);

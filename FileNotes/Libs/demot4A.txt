@@ -1,0 +1,81 @@
+<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="$(ProjectDir)bin\Debug\Newtonsoft.Json.dll" #>
+<#@ assembly name="$(ProjectDir)bin\Debug\Contracts.dll" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Reflection" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Collections" #>
+<#@ import namespace="Newtonsoft.Json" #>
+<#@ import namespace="Contracts" #>
+<#@ output extension=".xaml" #>
+<#
+//This assumes that our type is MyEntity and that the definition of the entity we 
+//are deserializing is kept in a dll called 'Contracts.dll' in namespace 
+//Contracts, modify as needed :)
+
+//How to Setup:
+// 1. Build Project to get Newtonsoft.dll and your Contracts.dll in Debug dir (or specify a different path)
+// 2. Add a file with the same base name and .json extension
+// 3. Populate file with data
+// 4. Replace 'MyEntity' with they type of the json object
+// 5. Change assembly and namespace to match they type of the json object
+// 6. Save file or use Build > Transform T4 templates
+// 7. In property view for the resulting .xaml file remember to set the Do not copy on build :)
+
+var data = JsonConvert.DeserializeObject<MyEntity>(File.ReadAllText(Path.ChangeExtension(Host.TemplateFile,".json")));
+Convert(data);
+
+#>
+<#+
+void Convert(object data, bool assembly = true, int tabs = 0) 
+{
+	Type type = data.GetType();
+
+#>
+<#+Tabs(tabs);#><c:<#= type.Name #><#+ if(assembly) {#> xmlns:c="clr-namespace:<#= type.Namespace #>;assembly=<#= type.Assembly.GetName().Name #>"<#+ } #>>
+<#+
+
+	foreach(var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where((p)=>p.CanWrite)) 
+	{
+		Type innerEnumerable = GetEnumerableType(prop.PropertyType);
+		var val = prop.GetValue(data);
+		if(innerEnumerable == null || prop.PropertyType == typeof(string))
+		{
+#>
+<#+Tabs(tabs+4);#><c:<#= type.Name #>.<#= prop.Name #>><#= val #></c:<#= type.Name #>.<#= prop.Name #>>
+<#+
+		}
+		else 
+		{
+#>
+<#+Tabs(tabs+4);#><c:<#= type.Name #>.<#= prop.Name #>>
+<#+
+			foreach(var v in val as IEnumerable)
+				Convert(v, false, tabs + 8);
+#>
+<#+Tabs(tabs+4);#></c:<#= type.Name #>.<#= prop.Name #>>
+<#+
+		}
+	}
+#>
+<#+Tabs(tabs);#></c:<#= type.Name #>>
+<#+
+}
+
+void Tabs(int tabs) {
+	for(int x = 0; x<tabs; x++) {#> <#+}
+}
+
+Type GetEnumerableType(Type type) {
+    foreach (Type intType in type.GetInterfaces()) {
+        if (intType.IsGenericType
+            && intType.GetGenericTypeDefinition() == typeof(IEnumerable<>)) {
+            return intType.GetGenericArguments()[0];
+        }
+    }
+    return null;
+}
+#>
